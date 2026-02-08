@@ -21,8 +21,8 @@ export function fillStreak(
   const offsetY = rng.random() * 200;
   const offsetX = rng.random() * 200;
 
-  // Per-rect angle — mostly horizontal-ish but can tilt
-  const angle = (rng.random() - 0.5) * Math.PI * 0.6; // ±54°
+  // Per-rect angle — mostly horizontal, occasionally tilted
+  const angle = rng.random() < 0.35 ? (rng.random() - 0.5) * Math.PI * 0.6 : 0;
   const ax = -Math.sin(angle); // perpendicular to band direction
   const ay = Math.cos(angle);
 

@@ -18,7 +18,7 @@ export function fillDots(
   params: FillParams,
 ): void {
   // Grid angle (slight rotation for visual interest)
-  const angle = rng.random() * Math.PI;
+  const angle = rng.random() < 0.35 ? rng.random() * Math.PI : 0;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
 

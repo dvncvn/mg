@@ -19,8 +19,8 @@ export function fillColumns(
   const offsetX = rng.random() * 200;
   const offsetY = rng.random() * 200;
 
-  // Per-rect angle — mostly vertical-ish but can tilt
-  const angle = Math.PI * 0.5 + (rng.random() - 0.5) * Math.PI * 0.6; // 90° ±54°
+  // Per-rect angle — mostly vertical, occasionally tilted
+  const angle = rng.random() < 0.35 ? Math.PI * 0.5 + (rng.random() - 0.5) * Math.PI * 0.6 : Math.PI * 0.5;
   const ax = Math.cos(angle); // perpendicular to stripe direction
   const ay = Math.sin(angle);
 

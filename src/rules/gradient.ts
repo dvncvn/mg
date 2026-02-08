@@ -17,7 +17,7 @@ export function fillGradient(
   rng: PRNGHelper,
   params: FillParams,
 ): void {
-  const angle = rng.random() * Math.PI * 2;
+  const angle = rng.random() < 0.35 ? rng.random() * Math.PI * 2 : 0;
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
 

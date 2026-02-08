@@ -71,11 +71,11 @@ const GLITCH_MAP: Record<string, string[]> = {
   ' ': [' ', '·', ' ', '_'],
 };
 
-/** ASCII/Unicode block characters for harder glitches */
+/** ASCII block/symbol characters for harder glitches */
 const BLOCKS = [
-  '█', '▓', '▒', '░', '▄', '▀', '▌', '▐',
-  '■', '□', '▪', '▫', '◼', '◻', '▣', '▢',
-  '╌', '╍', '┄', '┅', '╎', '╏', '┆', '┇',
+  '#', '@', '%', '&', '*', '/', '\\', '|',
+  '_', '-', '=', '+', '.', ':', ';', '!',
+  '[', ']', '{', '}', '<', '>', '~', '^',
 ];
 
 /** Glitch a string — randomly corrupt `intensity` fraction of characters */
@@ -97,13 +97,13 @@ export function glitchText(text: string, intensity: number = 0.15): string {
   return chars.join('');
 }
 
-/** Pure symbol/glyph sequences */
+/** Pure ASCII symbol sequences */
 const GLYPHS = [
-  '▓▒░', '░▒▓', '█▓▒░', '◼◻◼', '▪▫▪▫',
-  '╱╲╱╲', '┃┃┃', '═══', '╌╌╌╌', '┊┊┊┊',
-  '◇◆◇', '○●○●', '△▽△', '□■□■', '▲▼▲',
-  '⟁⟁⟁', '⬡⬡⬡', '⏣⏣', '⊞⊟⊞', '⊡⊠⊡',
-  '⌇⌇⌇', '⌁⌁⌁', '⏥⏥', '⎊⎊', '⏚⏛⏚',
+  '////', '\\\\\\\\', '||||', '----', '====',
+  '####', '....', '::::',  '****', '++++',
+  '/\\/\\', '><><', '[][]', '{}{}', '()()',
+  '~-~-', '-ede-', '._._', '-ede-', '>><<',
+  '#_#_', '|.|.', '/./.',  '=*=*', '-..-',
 ];
 
 const SYMBOL_FRAGMENTS = [

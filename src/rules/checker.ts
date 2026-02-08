@@ -17,7 +17,7 @@ export function fillChecker(
   rng: PRNGHelper,
   params: FillParams,
 ): void {
-  const angle = rng.random() * Math.PI;
+  const angle = rng.random() < 0.35 ? rng.random() * Math.PI : 0;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
 

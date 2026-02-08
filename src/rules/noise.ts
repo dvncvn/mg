@@ -23,9 +23,9 @@ export function fillNoise(
   // Exponential mapping: scale=0.1 → 30x finer, scale=6 → 0.06x (huge blobs)
   const scale = baseScale * Math.pow(params.scale, -1.5);
 
-  // Anisotropic stretch: elongate noise along a random angle
-  const angle = rng.random() * Math.PI;
-  const stretch = 1.5 + rng.random() * 2.5; // 1.5–4× elongation
+  // Anisotropic stretch: sometimes elongate along a random angle
+  const angle = rng.random() < 0.35 ? rng.random() * Math.PI : 0;
+  const stretch = 1.5 + rng.random() * 2.5;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
 

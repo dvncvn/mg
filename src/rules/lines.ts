@@ -16,7 +16,7 @@ export function fillLines(
   rng: PRNGHelper,
   params: FillParams,
 ): void {
-  const angle = rng.random() * Math.PI;
+  const angle = rng.random() < 0.35 ? rng.random() * Math.PI : 0;
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
 
