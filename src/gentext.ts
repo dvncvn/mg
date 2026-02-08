@@ -14,6 +14,7 @@ const NOUNS = [
   'place', 'focus', 'shine', 'plane', 'vary', 'veil', 'sheen', 'pull', 'polar',
   'spectre', 'ether', 'mist',
   'shapes', 'color', 'dawn', 'dusk',
+  'feel', 'touch', 'skin',
 ];
 
 const MODIFIERS = [
