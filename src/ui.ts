@@ -438,7 +438,6 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     frameToggleBtn.classList.toggle('active', frameMode);
     if (frameMode) {
       frameBgInput.value = bgColorInput.value;
-      textColorInput.value = fgColorInput.value;
     }
     updateFrameLayout();
   }
