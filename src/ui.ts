@@ -495,15 +495,58 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     updateTextOverlay();
   }
 
+  // Frame presets: cycle through ratio + shape combos with F key
+  const framePresets: { ratio: string; shape: string }[] = [];
+  {
+    const ratios = Array.from(frameRatioSelect.options).map(o => o.value);
+    const shapes = Array.from(frameShapeSelect.options).map(o => o.value);
+    for (const ratio of ratios) {
+      for (const shape of shapes) {
+        framePresets.push({ ratio, shape });
+      }
+    }
+  }
+  let framePresetIdx = -1; // -1 = not in frame mode
+
   function toggleFrame() {
     frameMode = !frameMode;
     frameToggleBtn.textContent = frameMode ? 'ON' : 'OFF';
     frameToggleBtn.classList.toggle('active', frameMode);
     if (frameMode) {
       frameBgInput.value = bgColorInput.value;
+      if (framePresetIdx < 0) framePresetIdx = 0;
+    } else {
+      framePresetIdx = -1;
     }
     updateFrameLayout();
   }
+
+  function cycleFrame() {
+    if (!frameMode) {
+      // First press: enter frame mode
+      frameMode = true;
+      frameToggleBtn.textContent = 'ON';
+      frameToggleBtn.classList.toggle('active', true);
+      frameBgInput.value = bgColorInput.value;
+      framePresetIdx = 0;
+    } else {
+      framePresetIdx = (framePresetIdx + 1) % framePresets.length;
+    }
+    const preset = framePresets[framePresetIdx];
+    frameRatioSelect.value = preset.ratio;
+    frameShapeSelect.value = preset.shape;
+    updateFrameLayout();
+  }
+
+  function exitFrame() {
+    if (!frameMode) return;
+    frameMode = false;
+    framePresetIdx = -1;
+    frameToggleBtn.textContent = 'OFF';
+    frameToggleBtn.classList.toggle('active', false);
+    updateFrameLayout();
+  }
+
   frameToggleBtn.addEventListener('click', toggleFrame);
 
   // Frame BG link toggle
@@ -788,7 +831,11 @@ export function setupUI(canvas: HTMLCanvasElement): void {
       }
       case 'f':
       case 'F':
-        toggleFrame();
+        cycleFrame();
+        break;
+      case 'g':
+      case 'G':
+        exitFrame();
         break;
       case 't':
       case 'T':
