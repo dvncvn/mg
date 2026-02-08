@@ -88,6 +88,23 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     };
   }
 
+  const metaRingText = document.getElementById('meta-ring-text')!;
+  const metaRingEl = document.getElementById('meta-ring')!;
+
+  function updateMetaRing() {
+    metaRingEl.style.setProperty('--meta-ring-color', textColorInput.value);
+    const v = getSliderVals();
+    let bpmStr = '---';
+    try { if (bpmMode) bpmStr = String(Math.round(bpm)); } catch(_) {}
+    metaRingText.textContent =
+      `SEED ${String(seed).padStart(3, '0')} \u2022 ` +
+      `RES ${v.res} \u2022 ` +
+      `SCALE ${v.scale.toFixed(1)} \u2022 ` +
+      `SUB ${v.subdiv} \u2022 ` +
+      `BPM ${bpmStr} \u2022 ` +
+      `SPEED ${v.speed.toFixed(1)} \u2022 `;
+  }
+
   function updateValDisplays() {
     const v = getSliderVals();
     resVal.textContent = String(v.res);
@@ -98,6 +115,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     warpVal.textContent = v.warp.toFixed(2);
     speedVal.textContent = v.speed.toFixed(1);
     periodVal.textContent = v.period.toFixed(1) + 's';
+    updateMetaRing();
   }
 
   function updateURL() {

@@ -79,6 +79,25 @@
       outline: none;
       cursor: text;
     }
+    #meta-ring {
+      position: fixed;
+      top: 10px; right: 10px;
+      width: 100px; height: 100px;
+      z-index: 6;
+      pointer-events: none;
+      animation: meta-spin 30s linear infinite;
+    }
+    #meta-ring svg text {
+      font-family: 'Geist Pixel', monospace;
+      font-size: 7px;
+      fill: var(--meta-ring-color, #38ff7e);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    @keyframes meta-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
     #intro-hint {
       display: none;
       position: fixed;
@@ -100,6 +119,16 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <div id="meta-ring">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <path id="meta-circle" d="M 50,50 m -40,0 a 40,40 0 1,1 80,0 a 40,40 0 1,1 -80,0" fill="none"/>
+      </defs>
+      <text>
+        <textPath href="#meta-circle" id="meta-ring-text">SEED 000 • RES 184 • SCALE 4.6 • SUB 2 • BPM --- • SPEED 1.0 • </textPath>
+      </text>
+    </svg>
+  </div>
   <div id="frame-text">
     <div id="frame-title" contenteditable spellcheck="false">Title</div>
   </div>
