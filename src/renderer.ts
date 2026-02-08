@@ -338,8 +338,8 @@ export function renderFrame(state: RendererState): void {
     const radius = Math.min(gridW, gridH) * state.mouseRadius;
     const r2 = radius * radius;
     const strength = state.mouseStrength;
-    // Hover = repel (+1), click = attract (-1)
-    const direction = state.mousePressed ? -1 : 1;
+    // Hover = attract (-1), click = repel (+1)
+    const direction = state.mousePressed ? 1 : -1;
 
     for (let gy = 0; gy < gridH; gy++) {
       const dy = gy - my;
