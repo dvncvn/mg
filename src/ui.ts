@@ -17,6 +17,20 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   const bgColorInput = document.getElementById('bgColor') as HTMLInputElement;
   const frameToggleBtn = document.getElementById('frameToggle')!;
   const frameTextEl = document.getElementById('frame-text')!;
+  const frameControlsEl = document.getElementById('frameControls')!;
+  const frameBgInput = document.getElementById('frameBg') as HTMLInputElement;
+  const frameRatioSelect = document.getElementById('frameRatio') as HTMLSelectElement;
+  const frameShapeSelect = document.getElementById('frameShape') as HTMLSelectElement;
+  const textToggleBtn = document.getElementById('textToggle')!;
+  const textColorInput = document.getElementById('textColor') as HTMLInputElement;
+  const textSizeSlider = document.getElementById('textSize') as HTMLInputElement;
+  const textSizeVal = document.getElementById('textSizeVal')!;
+  const textPositionSelect = document.getElementById('textPosition') as HTMLSelectElement;
+  const lensToggle = document.getElementById('lensToggle')!;
+  const lensSizeSlider = document.getElementById('lensSize') as HTMLInputElement;
+  const lensForceSlider = document.getElementById('lensForce') as HTMLInputElement;
+  const lensSizeVal = document.getElementById('lensSizeVal')!;
+  const lensForceVal = document.getElementById('lensForceVal')!;
 
   // Sliders
   const resSlider = document.getElementById('resolution') as HTMLInputElement;
@@ -167,14 +181,24 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     eventsToggle.classList.toggle('active', state.eventsEnabled);
   });
 
+  lensToggle.addEventListener('click', () => {
+    state.mouseEnabled = !state.mouseEnabled;
+    lensToggle.textContent = state.mouseEnabled ? 'ON' : 'OFF';
+    lensToggle.classList.toggle('active', state.mouseEnabled);
+  });
+
+  function applyLensParams() {
+    state.mouseRadius = parseFloat(lensSizeSlider.value);
+    state.mouseStrength = parseFloat(lensForceSlider.value);
+    lensSizeVal.textContent = lensSizeSlider.value;
+    lensForceVal.textContent = lensForceSlider.value;
+  }
+  lensSizeSlider.addEventListener('input', applyLensParams);
+  lensForceSlider.addEventListener('input', applyLensParams);
+
   function applyColors() {
     state.fgColor = hexToABGR(fgColorInput.value);
     state.bgColor = hexToABGR(bgColorInput.value);
-    if (frameMode) {
-      document.body.style.backgroundColor = bgColorInput.value;
-      // Set frame text to foreground color
-      frameTextEl.style.color = fgColorInput.value;
-    }
   }
   fgColorInput.addEventListener('input', applyColors);
   bgColorInput.addEventListener('input', applyColors);
@@ -188,18 +212,26 @@ export function setupUI(canvas: HTMLCanvasElement): void {
       document.body.style.backgroundColor = '';
       frameTextEl.style.color = '';
       frameTextEl.style.display = '';  // back to CSS default (none)
-      // Clear inline overrides — stylesheet rules take over
+      frameTextEl.style.left = '';
+      frameTextEl.style.right = '';
+      frameTextEl.style.top = '';
+      frameTextEl.style.bottom = '';
+      frameTextEl.style.width = '';
+      frameControlsEl.style.display = 'none';
       canvas.style.top = '';
       canvas.style.right = '';
       canvas.style.left = '';
       canvas.style.width = '';
       canvas.style.height = '';
+      canvas.style.borderRadius = '';
+      canvas.style.overflow = '';
       return;
     }
 
     document.body.classList.add('framed');
-    document.body.style.backgroundColor = bgColorInput.value;
+    document.body.style.backgroundColor = frameBgInput.value;
     frameTextEl.style.color = fgColorInput.value;
+    frameControlsEl.style.display = '';
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -207,7 +239,16 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     const textW = vw * 0.26;
     const availW = vw - textW - pad * 2.5;
     const availH = vh - pad * 2;
-    const aspect = state.gridW / state.gridH;
+
+    // Aspect ratio
+    const ratioStr = frameRatioSelect.value;
+    let aspect: number;
+    if (ratioStr === 'free') {
+      aspect = state.gridW / state.gridH;
+    } else {
+      const [rw, rh] = ratioStr.split(':').map(Number);
+      aspect = rw / rh;
+    }
 
     let w: number, h: number;
     if (availW / availH > aspect) {
@@ -226,20 +267,120 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     canvas.style.top = top + 'px';
     canvas.style.width = w + 'px';
     canvas.style.height = h + 'px';
+    canvas.style.overflow = 'hidden';
 
-    // Position text in the left margin
-    frameTextEl.style.left = pad + 'px';
-    frameTextEl.style.top = top + 'px';
-    frameTextEl.style.width = (textW - pad) + 'px';
+    // Shape
+    const shape = frameShapeSelect.value;
+    switch (shape) {
+      case 'rect':
+        canvas.style.borderRadius = '0';
+        break;
+      case 'rounded': {
+        const r = Math.min(w, h) * 0.06;
+        canvas.style.borderRadius = r + 'px';
+        break;
+      }
+      case 'circle':
+        canvas.style.borderRadius = '50%';
+        break;
+      case 'arch': {
+        const ar = w * 0.5;
+        canvas.style.borderRadius = `${ar}px ${ar}px 0 0`;
+        break;
+      }
+    }
+
+    // Text visibility
+    const textVisible = textToggleBtn.classList.contains('active');
+    frameTextEl.style.display = textVisible ? 'flex' : 'none';
+
+    if (textVisible) {
+      // Text color
+      frameTextEl.style.color = textColorInput.value;
+
+      // Text size multiplier
+      const scale = parseFloat(textSizeSlider.value);
+      frameTextEl.style.setProperty('--frame-title-size', (22 * scale) + 'px');
+      frameTextEl.style.setProperty('--frame-sub-size', (11 * scale) + 'px');
+      frameTextEl.style.setProperty('--frame-detail-size', (9 * scale) + 'px');
+
+      // Text position
+      const pos = textPositionSelect.value;
+      const canvasLeft = vw - w - pad;
+      const canvasBottom = top + h;
+
+      // Reset
+      frameTextEl.style.left = '';
+      frameTextEl.style.right = '';
+      frameTextEl.style.top = '';
+      frameTextEl.style.bottom = '';
+
+      const textMaxW = pos.endsWith('r')
+        ? (vw - w - pad * 2.5)  // text on left when art is right — but text is right of art
+        : (canvasLeft - pad);
+
+      switch (pos) {
+        case 'tl':
+          frameTextEl.style.left = pad + 'px';
+          frameTextEl.style.top = top + 'px';
+          frameTextEl.style.width = (canvasLeft - pad * 2) + 'px';
+          break;
+        case 'bl':
+          frameTextEl.style.left = pad + 'px';
+          frameTextEl.style.bottom = (vh - canvasBottom) + 'px';
+          frameTextEl.style.width = (canvasLeft - pad * 2) + 'px';
+          break;
+        case 'tr':
+          frameTextEl.style.right = pad + 'px';
+          frameTextEl.style.top = top + 'px';
+          frameTextEl.style.width = (canvasLeft - pad * 2) + 'px';
+          // Shift canvas to left side
+          canvas.style.right = '';
+          canvas.style.left = pad + 'px';
+          break;
+        case 'br':
+          frameTextEl.style.right = pad + 'px';
+          frameTextEl.style.bottom = (vh - canvasBottom) + 'px';
+          frameTextEl.style.width = (canvasLeft - pad * 2) + 'px';
+          canvas.style.right = '';
+          canvas.style.left = pad + 'px';
+          break;
+      }
+    }
   }
 
   function toggleFrame() {
     frameMode = !frameMode;
     frameToggleBtn.textContent = frameMode ? 'ON' : 'OFF';
     frameToggleBtn.classList.toggle('active', frameMode);
+    if (frameMode) {
+      frameBgInput.value = bgColorInput.value;
+      textColorInput.value = fgColorInput.value;
+    }
     updateFrameLayout();
   }
   frameToggleBtn.addEventListener('click', toggleFrame);
+
+  // Frame sub-controls update layout live
+  frameBgInput.addEventListener('input', () => {
+    if (frameMode) {
+      document.body.style.backgroundColor = frameBgInput.value;
+    }
+  });
+  frameRatioSelect.addEventListener('change', () => { if (frameMode) updateFrameLayout(); });
+  frameShapeSelect.addEventListener('change', () => { if (frameMode) updateFrameLayout(); });
+
+  textToggleBtn.addEventListener('click', () => {
+    textToggleBtn.classList.toggle('active');
+    textToggleBtn.textContent = textToggleBtn.classList.contains('active') ? 'ON' : 'OFF';
+    if (frameMode) updateFrameLayout();
+  });
+  textColorInput.addEventListener('input', () => { if (frameMode) updateFrameLayout(); });
+  textSizeSlider.addEventListener('input', () => {
+    textSizeVal.textContent = parseFloat(textSizeSlider.value).toFixed(1);
+    if (frameMode) updateFrameLayout();
+  });
+  textPositionSelect.addEventListener('change', () => { if (frameMode) updateFrameLayout(); });
 
   // === Sliders that need full regeneration — debounced ===
   let regenTimer = 0;
@@ -302,6 +443,20 @@ export function setupUI(canvas: HTMLCanvasElement): void {
       case 'S':
         savePNG(canvas, seed);
         break;
+      case 'c':
+      case 'C': {
+        const rh = () => '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
+        fgColorInput.value = rh();
+        bgColorInput.value = rh();
+        applyColors();
+        if (frameMode) {
+          frameBgInput.value = bgColorInput.value;
+          textColorInput.value = fgColorInput.value;
+          document.body.style.backgroundColor = frameBgInput.value;
+          updateFrameLayout();
+        }
+        break;
+      }
       case 'f':
       case 'F':
         toggleFrame();
@@ -322,7 +477,10 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   canvas.addEventListener('mouseleave', () => {
     state.mouseGX = -1;
     state.mouseGY = -1;
+    state.mousePressed = false;
   });
+  canvas.addEventListener('mousedown', () => { state.mousePressed = true; });
+  window.addEventListener('mouseup', () => { state.mousePressed = false; });
 
   // === Resize ===
   window.addEventListener('resize', () => {

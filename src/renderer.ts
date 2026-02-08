@@ -68,8 +68,12 @@ export interface RendererState {
   fgColor: number;  // ABGR packed
   bgColor: number;  // ABGR packed
   eventsEnabled: boolean;
+  mouseEnabled: boolean;
   mouseGX: number;  // grid-space mouse coords, -1 = inactive
   mouseGY: number;
+  mousePressed: boolean;
+  mouseRadius: number;   // fraction of short side (0.05–0.5)
+  mouseStrength: number; // push strength (0.1–2)
   startTime: number;
   pauseOffset: number;
 }
@@ -182,8 +186,12 @@ export function initRenderer(
     fgColor: 0xFFFFFFFF,  // white
     bgColor: 0xFF000000,  // black
     eventsEnabled: true,
+    mouseEnabled: true,
     mouseGX: -1,
     mouseGY: -1,
+    mousePressed: false,
+    mouseRadius: 0.18,
+    mouseStrength: 0.7,
     startTime: performance.now(),
     pauseOffset: 0,
   };
@@ -320,16 +328,18 @@ export function renderFrame(state: RendererState): void {
 
   const mx = state.mouseGX;
   const my = state.mouseGY;
-  const mouseActive = mx >= 0 && my >= 0;
+  const mouseActive = state.mouseEnabled && mx >= 0 && my >= 0;
 
   if (!mouseActive) {
     for (let i = 0; i < totalPixels; i++) {
       data32[i] = finalBuffer[i] ? fg : bg;
     }
   } else {
-    const radius = Math.min(gridW, gridH) * 0.18;
+    const radius = Math.min(gridW, gridH) * state.mouseRadius;
     const r2 = radius * radius;
-    const strength = 0.7;
+    const strength = state.mouseStrength;
+    // Hover = repel (+1), click = attract (-1)
+    const direction = state.mousePressed ? -1 : 1;
 
     for (let gy = 0; gy < gridH; gy++) {
       const dy = gy - my;
@@ -341,7 +351,7 @@ export function renderFrame(state: RendererState): void {
         if (d2 < r2 && d2 > 0) {
           const dist = Math.sqrt(d2);
           const falloff = 1 - dist / radius;
-          const push = falloff * falloff * strength * radius;
+          const push = falloff * falloff * strength * radius * direction;
           const sx = Math.round(gx + (dx / dist) * push);
           const sy = Math.round(gy + (dy / dist) * push);
           srcIdx = Math.max(0, Math.min(gridH - 1, sy)) * gridW
