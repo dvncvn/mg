@@ -758,4 +758,22 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   regenerate();
   applyGenText();
   updateTextOverlay();
+
+  // Intro sequence
+  const introHint = document.getElementById('intro-hint')!;
+  introHint.textContent = 'cmd + . to open controls';
+  introHint.style.display = 'block';
+
+  setTimeout(() => {
+    canvas.classList.add('visible');
+  }, 2000);
+  setTimeout(() => {
+    introHint.classList.add('show');
+  }, 4500);
+  setTimeout(() => {
+    introHint.classList.remove('show');
+  }, 8500);
+  setTimeout(() => {
+    introHint.style.display = 'none';
+  }, 9500);
 }

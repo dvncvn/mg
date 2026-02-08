@@ -26,6 +26,9 @@ const FRAGMENTS = [
   'false dawn', 'last scan', 'soft reset', 'deep cut', 'slow burn',
   'night mode', 'grey area', 'dead air', 'raw data', 'thin ice',
   'open field', 'lost time', 'near void', 'far grid', 'dim pulse',
+  'keep hope', 'stay close', 'be still', 'breathe slow', 'hold on',
+  'let go', 'move soft', 'look up', 'feel more', 'stay warm',
+  'go deep', 'find light', 'trust fall', 'run free', 'dream loud', 'feel something',
 ];
 
 /** Simple seeded pick */
@@ -94,13 +97,30 @@ export function glitchText(text: string, intensity: number = 0.15): string {
   return chars.join('');
 }
 
+/** Pure symbol/glyph sequences */
+const GLYPHS = [
+  '▓▒░', '░▒▓', '█▓▒░', '◼◻◼', '▪▫▪▫',
+  '╱╲╱╲', '┃┃┃', '═══', '╌╌╌╌', '┊┊┊┊',
+  '◇◆◇', '○●○●', '△▽△', '□■□■', '▲▼▲',
+  '⟁⟁⟁', '⬡⬡⬡', '⏣⏣', '⊞⊟⊞', '⊡⊠⊡',
+  '⌇⌇⌇', '⌁⌁⌁', '⏥⏥', '⎊⎊', '⏚⏛⏚',
+];
+
+const SYMBOL_FRAGMENTS = [
+  '/// void', '>> pulse', '<< drift', ':: sync',
+  '## grid', '-- null', '++ flux', '~~ haze',
+  '00:00:00', 'ff:ff:ff', '0x000', '0xfff',
+  '||| scan', '/// loop', '<<< rift', '>>> wake',
+  '__ zone __', '.. trace ..', '// break //', ':: node ::',
+];
+
 export function generateText(seed: number): string {
   // Extra mixing to ensure adjacent seeds diverge
   let h = next(seed + 1);
   h = next(h);
   h = next(h);
 
-  const roll = (h % 5);
+  const roll = (h % 8);
   h = next(h);
   const h2 = next(h);
   const h3 = next(h2);
@@ -115,7 +135,14 @@ export function generateText(seed: number): string {
     case 3:
       return pick(NOUNS, h) + ' / ' + pick(NOUNS, h2);
     case 4:
-    default:
       return pick(MODIFIERS, h) + ' ' + pick(NOUNS, h2) + ' ' + String((h3 % 99) + 1).padStart(2, '0');
+    case 5:
+      return pick(GLYPHS, h);
+    case 6:
+      return pick(SYMBOL_FRAGMENTS, h);
+    case 7:
+    default:
+      // glyph + word combo
+      return pick(GLYPHS, h) + ' ' + pick(NOUNS, h2);
   }
 }
