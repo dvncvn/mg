@@ -22,6 +22,7 @@ export interface VariantConfig {
   flickerProb: number;
   invertProb: number;
   stopProb: number;
+  calm: boolean;
 }
 
 const GRID_OPTIONS: (64 | 96 | 128 | 192)[] = [64, 96, 128, 192];
@@ -36,8 +37,31 @@ const ALL_RULES: RuleType[] = [...ORGANIC_RULES, ...GEOMETRIC_RULES];
  * Deterministically derive a complete variant config from a seed (0–255).
  * Every variant gets a mix of organic and geometric rules for contrast.
  */
+/** Calm rules — simple, sparse, geometric */
+const CALM_RULES: RuleType[] = ['lines', 'dots', 'gradient', 'noise'];
+
 export function getVariantConfig(seed: number): VariantConfig {
   const rng = createPRNG(seed * 7919 + 31); // spread seeds
+
+  // ~15% chance of a calm interstitial
+  const isCalm = rng.random() < 0.15;
+
+  if (isCalm) {
+    const rule = rng.randChoice(CALM_RULES);
+    return {
+      seed,
+      gridRes: GRID_OPTIONS[rng.randInt(0, 4)],
+      subdivDepth: rng.random() < 0.6 ? 0 : 1, // 0 = full canvas, 1 = one split
+      minRectCells: 32,
+      activeRules: [rule],
+      periodMs: rng.randInt(8000, 16001), // slower
+      events: [],
+      flickerProb: 0,
+      invertProb: 0,
+      stopProb: 0.9, // high stop prob = very few rects
+      calm: true,
+    };
+  }
 
   // Pick a dominant rule — alternate between organic and geometric families
   const family = (seed >> 5) & 7; // 0–7, 8 families
@@ -103,5 +127,6 @@ export function getVariantConfig(seed: number): VariantConfig {
     flickerProb,
     invertProb,
     stopProb,
+    calm: false,
   };
 }
