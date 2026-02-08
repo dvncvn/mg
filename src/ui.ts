@@ -6,7 +6,6 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   let seed = parseInt(params.get('seed') ?? '0', 10) & 0xff;
 
   // DOM refs
-  const seedLabel = document.getElementById('seedLabel')!;
   const prevBtn = document.getElementById('prevSeed')!;
   const nextBtn = document.getElementById('nextSeed')!;
   const playPauseBtn = document.getElementById('playPause')!;
@@ -14,6 +13,9 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   const savePngBtn = document.getElementById('savePng')!;
   const recBtn = document.getElementById('recordWebm')!;
   const eventsToggle = document.getElementById('eventsToggle')!;
+  const colorToggle = document.getElementById('colorToggle')!;
+  const frameToggleBtn = document.getElementById('frameToggle')!;
+  const frameTextEl = document.getElementById('frame-text')!;
 
   // Sliders
   const resSlider = document.getElementById('resolution') as HTMLInputElement;
@@ -89,6 +91,20 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     history.replaceState(null, '', '?' + p.toString());
   }
 
+  function randomizeParams() {
+    const r = () => Math.random();
+    resSlider.value = String(32 + Math.floor(r() * 60) * 8);       // 32–512 step 8
+    scaleSlider.value = (0.1 + r() * 5.9).toFixed(1);              // 0.1–6
+    subdivSlider.value = String(1 + Math.floor(r() * 8));           // 1–8
+    densitySlider.value = (r()).toFixed(2);                         // 0–1
+    noiseSlider.value = (r()).toFixed(2);                           // 0–1
+    warpSlider.value = (r() < 0.5 ? 0 : r()).toFixed(2);           // bias towards 0
+    speedSlider.value = (0.3 + r() * 2.0).toFixed(1);              // 0.3–2.3
+    periodSlider.value = (3 + r() * 17).toFixed(1);                // 3–20
+    seed = Math.floor(Math.random() * 256);
+    regenerate();
+  }
+
   function applyLiveParams() {
     const v = getSliderVals();
     state.speed = v.speed;
@@ -108,7 +124,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     };
     state = initRenderer(canvas, seed, opts);
     applyLiveParams();
-    seedLabel.textContent = String(seed).padStart(3, '0');
+    if (frameMode) updateFrameLayout();
     updateValDisplays();
     updateURL();
     loop();
@@ -147,6 +163,71 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     eventsToggle.textContent = state.eventsEnabled ? 'ON' : 'OFF';
     eventsToggle.classList.toggle('active', state.eventsEnabled);
   });
+
+  function toggleColor() {
+    state.colorMode = !state.colorMode;
+    colorToggle.textContent = state.colorMode ? 'ON' : 'OFF';
+    colorToggle.classList.toggle('active', state.colorMode);
+  }
+  colorToggle.addEventListener('click', toggleColor);
+
+  // === Frame mode ===
+  let frameMode = false;
+
+  function updateFrameLayout() {
+    if (!frameMode) {
+      document.body.classList.remove('framed');
+      frameTextEl.style.display = '';  // back to CSS default (none)
+      // Clear inline overrides — stylesheet rules take over
+      canvas.style.top = '';
+      canvas.style.right = '';
+      canvas.style.left = '';
+      canvas.style.width = '';
+      canvas.style.height = '';
+      return;
+    }
+
+    document.body.classList.add('framed');
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = Math.min(vw, vh) * 0.06;
+    const textW = vw * 0.26;
+    const availW = vw - textW - pad * 2.5;
+    const availH = vh - pad * 2;
+    const aspect = state.gridW / state.gridH;
+
+    let w: number, h: number;
+    if (availW / availH > aspect) {
+      h = availH;
+      w = h * aspect;
+    } else {
+      w = availW;
+      h = w / aspect;
+    }
+
+    const top = (vh - h) / 2;
+    const right = pad;
+
+    canvas.style.left = 'auto';
+    canvas.style.right = right + 'px';
+    canvas.style.top = top + 'px';
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    // Position text in the left margin
+    frameTextEl.style.left = pad + 'px';
+    frameTextEl.style.top = top + 'px';
+    frameTextEl.style.width = (textW - pad) + 'px';
+  }
+
+  function toggleFrame() {
+    frameMode = !frameMode;
+    frameToggleBtn.textContent = frameMode ? 'ON' : 'OFF';
+    frameToggleBtn.classList.toggle('active', frameMode);
+    updateFrameLayout();
+  }
+  frameToggleBtn.addEventListener('click', toggleFrame);
 
   // === Sliders that need full regeneration — debounced ===
   let regenTimer = 0;
@@ -193,6 +274,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
       return;
     }
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+    if ((e.target as HTMLElement).isContentEditable) return;
     switch (e.key) {
       case ' ':
         e.preventDefault();
@@ -208,18 +290,30 @@ export function setupUI(canvas: HTMLCanvasElement): void {
       case 'S':
         savePNG(canvas, seed);
         break;
+      case 'c':
+      case 'C':
+        toggleColor();
+        break;
+      case 'f':
+      case 'F':
+        toggleFrame();
+        break;
       case 'r':
       case 'R':
-        if (!recording) {
-          recording = true;
-          recBtn.textContent = '⏹ REC…';
-          recordWebM(canvas, state.config.periodMs, seed, undefined, () => {
-            recording = false;
-            recBtn.textContent = '⏺ REC';
-          });
-        }
+        randomizeParams();
         break;
     }
+  });
+
+  // === Mouse interaction ===
+  canvas.addEventListener('mousemove', (e) => {
+    const r = canvas.getBoundingClientRect();
+    state.mouseGX = ((e.clientX - r.left) / r.width) * state.gridW;
+    state.mouseGY = ((e.clientY - r.top) / r.height) * state.gridH;
+  });
+  canvas.addEventListener('mouseleave', () => {
+    state.mouseGX = -1;
+    state.mouseGY = -1;
   });
 
   // === Resize ===
@@ -239,6 +333,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     state.pauseOffset = offset;
     state.playing = wasPlaying;
     if (!wasPlaying) playPauseBtn.textContent = '▶';
+    if (frameMode) updateFrameLayout();
     loop();
   });
 

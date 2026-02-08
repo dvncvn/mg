@@ -19,6 +19,54 @@ import {
   invertBitmap,
 } from './events';
 
+/* ── Colour helpers ── */
+
+function hslToABGR(h: number, s: number, l: number): number {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60)       { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else              { r = c; b = x; }
+  return 0xFF000000
+    | (Math.round((b + m) * 255) << 16)
+    | (Math.round((g + m) * 255) << 8)
+    | Math.round((r + m) * 255);
+}
+
+function generatePalette(seed: number): number[] {
+  const rng = createPRNG(seed * 7 + 13);
+  const baseHue = rng.random() * 360;
+  const sat = 0.6 + rng.random() * 0.35;   // 0.60–0.95
+  const lit = 0.45 + rng.random() * 0.2;    // 0.45–0.65
+  const scheme = rng.randInt(0, 5);
+  const hues: number[] = [];
+  switch (scheme) {
+    case 0: // complementary
+      hues.push(baseHue, (baseHue + 180) % 360);
+      break;
+    case 1: // triadic
+      hues.push(baseHue, (baseHue + 120) % 360, (baseHue + 240) % 360);
+      break;
+    case 2: // analogous
+      hues.push(baseHue, (baseHue + 30) % 360, (baseHue + 60) % 360, (baseHue + 90) % 360);
+      break;
+    case 3: // split-complementary
+      hues.push(baseHue, (baseHue + 150) % 360, (baseHue + 210) % 360);
+      break;
+    default: // tetradic
+      hues.push(baseHue, (baseHue + 90) % 360, (baseHue + 180) % 360, (baseHue + 270) % 360);
+      break;
+  }
+  return hues.map(h => hslToABGR(h, sat, lit));
+}
+
+/* ── Rect state ── */
+
 interface RectState {
   rect: Rect;
   rule: RuleType;
@@ -29,6 +77,7 @@ interface RectState {
   rng: PRNGHelper;
   rngSeed: number;
   events: EventDef[];
+  fgColor: number;  // ABGR packed
 }
 
 export interface RendererState {
@@ -38,6 +87,8 @@ export interface RendererState {
   ctx: CanvasRenderingContext2D;
   gridBuffer: Uint8Array;
   warpBuffer: Uint8Array;
+  colorBuffer: Uint32Array;
+  warpColorBuffer: Uint32Array;
   gridW: number;
   gridH: number;
   imageData: ImageData;
@@ -51,7 +102,10 @@ export interface RendererState {
   scale: number;
   density: number;
   warp: number;
+  colorMode: boolean;
   eventsEnabled: boolean;
+  mouseGX: number;  // grid-space mouse coords, -1 = inactive
+  mouseGY: number;
   startTime: number;
   pauseOffset: number;
 }
@@ -99,23 +153,21 @@ export function initRenderer(
     (config as any).periodMs = opts.periodOverride;
   }
 
-  const dpr = window.devicePixelRatio || 1;
   const cssW = window.innerWidth;
   const cssH = window.innerHeight;
-
-  canvas.style.width = cssW + 'px';
-  canvas.style.height = cssH + 'px';
-  canvas.width = cssW * dpr;
-  canvas.height = cssH * dpr;
-
-  const ctx = canvas.getContext('2d')!;
-  ctx.imageSmoothingEnabled = false;
 
   // Grid cells are square. gridRes controls the short axis cell count.
   const shortSide = Math.min(cssW, cssH);
   const gridStep = Math.max(1, Math.floor(shortSide / config.gridRes));
   const gridW = Math.floor(cssW / gridStep);
   const gridH = Math.floor(cssH / gridStep);
+
+  // Canvas at grid resolution — CSS image-rendering: pixelated handles upscale
+  canvas.width = gridW;
+  canvas.height = gridH;
+
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
 
   // Subdivide a rectangular region
   const rng = createPRNG(seed);
@@ -127,6 +179,8 @@ export function initRenderer(
     stopProb: config.stopProb,
   }, rng);
 
+  const palette = generatePalette(seed);
+
   const rects: RectState[] = subRects.map((rect, i) => {
     const ruleIdx = i % config.activeRules.length;
     const rule = config.activeRules[ruleIdx];
@@ -137,29 +191,37 @@ export function initRenderer(
     const events = config.events.filter(
       (e) => e.rectIndex % subRects.length === i,
     );
+    const fgColor = palette[i % palette.length];
     return {
       rect, rule, altRule, bw, bh,
       bitmap: new Uint8Array(bw * bh),
       rng: createPRNG(rngSeed),
-      rngSeed, events,
+      rngSeed, events, fgColor,
     };
   });
 
-  const gridBuffer = new Uint8Array(gridW * gridH);
-  const warpBuffer = new Uint8Array(gridW * gridH);
+  const totalPixels = gridW * gridH;
+  const gridBuffer = new Uint8Array(totalPixels);
+  const warpBuffer = new Uint8Array(totalPixels);
+  const colorBuffer = new Uint32Array(totalPixels);
+  const warpColorBuffer = new Uint32Array(totalPixels);
   const imageData = ctx.createImageData(canvas.width, canvas.height);
 
   return {
     config, rects, canvas, ctx,
-    gridBuffer, warpBuffer, gridW, gridH, imageData,
-    cssW, cssH, gridStep, dpr,
+    gridBuffer, warpBuffer, colorBuffer, warpColorBuffer,
+    gridW, gridH, imageData,
+    cssW, cssH, gridStep, dpr: 1,
     playing: true,
     speed: 1,
     noiseAmount: 0.5,
     scale: 1.0,
     density: 0.5,
     warp: 0,
+    colorMode: false,
     eventsEnabled: true,
+    mouseGX: -1,
+    mouseGY: -1,
     startTime: performance.now(),
     pauseOffset: 0,
   };
@@ -229,8 +291,55 @@ function applyWarp(
   }
 }
 
+/**
+ * Warp for the Uint32 color buffer — same displacement logic, 32-bit values.
+ */
+function applyWarpColor(
+  src: Uint32Array,
+  dst: Uint32Array,
+  gridW: number,
+  gridH: number,
+  t: number,
+  warpAmount: number,
+  seed: number,
+): void {
+  if (warpAmount <= 0) {
+    dst.set(src);
+    return;
+  }
+  const maxShift = warpAmount * gridW * 0.35;
+  const bandWidth = gridH * 0.3;
+  const bandCenter = (Math.sin(t * Math.PI * 2) * 0.5 + 0.5) * gridH;
+  const band2Center = (Math.cos(t * Math.PI * 2 + 1.0) * 0.5 + 0.5) * gridH;
+  const band2Width = gridH * 0.15;
+
+  for (let y = 0; y < gridH; y++) {
+    const d1 = Math.abs(y - bandCenter) / (bandWidth * 0.5);
+    const d2 = Math.abs(y - band2Center) / (band2Width * 0.5);
+    const intensity1 = d1 < 1 ? Math.pow(1 - d1, 0.3) : 0;
+    const intensity2 = d2 < 1 ? Math.pow(1 - d2, 0.3) : 0;
+    const intensity = Math.min(1, intensity1 + intensity2 * 0.6);
+
+    const rowStart = y * gridW;
+    if (intensity < 0.01) {
+      for (let x = 0; x < gridW; x++) dst[rowStart + x] = src[rowStart + x];
+      continue;
+    }
+    const wave1 = Math.sin(y * 0.03 + t * Math.PI * 2) * 0.7;
+    const wave2 = Math.sin(y * 0.11 + t * Math.PI * 6 + 2.0) * 0.3;
+    const noise = valueNoise2D(y * 0.025 + seed * 7.1, t * 3 + seed) * 2 - 1;
+    const shift = Math.round((wave1 + wave2 + noise * 0.5) * maxShift * intensity);
+    for (let x = 0; x < gridW; x++) {
+      dst[rowStart + x] = src[rowStart + ((x - shift) % gridW + gridW) % gridW];
+    }
+  }
+}
+
 export function renderFrame(state: RendererState): void {
-  const { canvas, ctx, gridStep, dpr, config, rects, gridBuffer, warpBuffer, gridW, gridH } = state;
+  const {
+    ctx, config, rects, gridBuffer, warpBuffer,
+    colorBuffer, warpColorBuffer, gridW, gridH,
+  } = state;
 
   const elapsed = state.playing
     ? (performance.now() - state.startTime) * state.speed + state.pauseOffset
@@ -243,7 +352,11 @@ export function renderFrame(state: RendererState): void {
     density: state.density,
   };
 
+  const BLACK = 0xFF000000;
+  const isColor = state.colorMode;
+
   gridBuffer.fill(0);
+  if (isColor) colorBuffer.fill(BLACK);
 
   for (const rs of rects) {
     rs.rng = createPRNG(rs.rngSeed);
@@ -274,48 +387,76 @@ export function renderFrame(state: RendererState): void {
 
     const rx = rs.rect.x;
     const ry = rs.rect.y;
+    const fg = rs.fgColor;
     for (let y = 0; y < rs.bh; y++) {
+      const srcRow = y * rs.bw;
+      const dstRow = (ry + y) * gridW + rx;
       for (let x = 0; x < rs.bw; x++) {
-        gridBuffer[(ry + y) * gridW + (rx + x)] = rs.bitmap[y * rs.bw + x];
+        const val = rs.bitmap[srcRow + x];
+        gridBuffer[dstRow + x] = val;
+        if (isColor) colorBuffer[dstRow + x] = val ? fg : BLACK;
       }
     }
   }
 
   // Apply scanning warp
   applyWarp(gridBuffer, warpBuffer, gridW, gridH, t, state.warp, config.seed);
-  const finalBuffer = state.warp > 0 ? warpBuffer : gridBuffer;
-
-  // Blit to canvas
-  const pxWidth = canvas.width;
-  const pxHeight = canvas.height;
-  const { imageData } = state;
-  const data = imageData.data;
-
-  // Clear to black with alpha
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = 0;
-    data[i + 1] = 0;
-    data[i + 2] = 0;
-    data[i + 3] = 255;
+  if (isColor) {
+    applyWarpColor(colorBuffer, warpColorBuffer, gridW, gridH, t, state.warp, config.seed);
   }
 
-  const pxStep = Math.round(gridStep * dpr);
+  // Blit 1:1 with optional mouse distortion
+  const { imageData } = state;
+  const data32 = new Uint32Array(imageData.data.buffer);
+  const totalPixels = gridW * gridH;
 
-  for (let gy = 0; gy < gridH; gy++) {
-    for (let gx = 0; gx < gridW; gx++) {
-      if (!finalBuffer[gy * gridW + gx]) continue;
-      const px0 = gx * pxStep;
-      const py0 = gy * pxStep;
-      const px1 = px0 + pxStep;
-      const py1 = py0 + pxStep;
-      for (let py = py0; py < py1 && py < pxHeight; py++) {
-        const rowOff = py * pxWidth * 4;
-        for (let px = px0; px < px1 && px < pxWidth; px++) {
-          const off = rowOff + px * 4;
-          data[off] = 255;
-          data[off + 1] = 255;
-          data[off + 2] = 255;
+  const finalMono = state.warp > 0 ? warpBuffer : gridBuffer;
+  const finalColor = state.warp > 0 ? warpColorBuffer : colorBuffer;
+
+  const mx = state.mouseGX;
+  const my = state.mouseGY;
+  const mouseActive = mx >= 0 && my >= 0;
+
+  if (!mouseActive) {
+    // Fast path — no distortion
+    if (isColor) {
+      for (let i = 0; i < totalPixels; i++) data32[i] = finalColor[i];
+    } else {
+      const WHITE = 0xFFFFFFFF;
+      for (let i = 0; i < totalPixels; i++) {
+        data32[i] = finalMono[i] ? WHITE : BLACK;
+      }
+    }
+  } else {
+    // Distortion lens around cursor
+    const radius = Math.min(gridW, gridH) * 0.18;
+    const r2 = radius * radius;
+    const strength = 0.7;
+    const WHITE = 0xFFFFFFFF;
+
+    for (let gy = 0; gy < gridH; gy++) {
+      const dy = gy - my;
+      const dy2 = dy * dy;
+      for (let gx = 0; gx < gridW; gx++) {
+        const dx = gx - mx;
+        const d2 = dx * dx + dy2;
+        let srcIdx: number;
+        if (d2 < r2 && d2 > 0) {
+          const dist = Math.sqrt(d2);
+          const falloff = 1 - dist / radius;
+          const push = falloff * falloff * strength * radius;
+          const sx = Math.round(gx + (dx / dist) * push);
+          const sy = Math.round(gy + (dy / dist) * push);
+          const cx = Math.max(0, Math.min(gridW - 1, sx));
+          const cy = Math.max(0, Math.min(gridH - 1, sy));
+          srcIdx = cy * gridW + cx;
+        } else {
+          srcIdx = gy * gridW + gx;
         }
+        const dstIdx = gy * gridW + gx;
+        data32[dstIdx] = isColor
+          ? finalColor[srcIdx]
+          : (finalMono[srcIdx] ? WHITE : BLACK);
       }
     }
   }
