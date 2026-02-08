@@ -117,7 +117,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
 
   function randomizeParams() {
     const r = () => Math.random();
-    resSlider.value = String(32 + Math.floor(r() * 60) * 8);       // 32–512 step 8
+    resSlider.value = String(64 + Math.floor(r() * 24) * 8);       // 64–256 step 8
     scaleSlider.value = (0.1 + r() * 5.9).toFixed(1);              // 0.1–6
     subdivSlider.value = String(1 + Math.floor(r() * 8));           // 1–8
     densitySlider.value = (r()).toFixed(2);                         // 0–1
@@ -185,6 +185,51 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   nextBtn.addEventListener('click', () => setSeed(seed + 1));
   playPauseBtn.addEventListener('click', togglePlay);
   regenBtn.addEventListener('click', regenerate);
+
+  // === Auto-advance ===
+  const autoBtn = document.getElementById('autoAdvance')!;
+  const autoControlsEl = document.getElementById('autoControls')!;
+  const autoIntervalSlider = document.getElementById('autoInterval') as HTMLInputElement;
+  const autoVarianceSlider = document.getElementById('autoVariance') as HTMLInputElement;
+  const autoIntervalVal = document.getElementById('autoIntervalVal')!;
+  const autoVarianceVal = document.getElementById('autoVarianceVal')!;
+  let autoMode = true;
+  let autoTimer = 0;
+
+  function scheduleAutoAdvance() {
+    if (!autoMode) return;
+    const base = parseFloat(autoIntervalSlider.value);
+    const variance = parseFloat(autoVarianceSlider.value);
+    // Random interval: base ± (base * variance)
+    const jitter = base * variance * (Math.random() * 2 - 1);
+    const delay = Math.max(2, base + jitter) * 1000;
+    autoTimer = window.setTimeout(() => {
+      // Randomly go forward or back
+      setSeed(seed + (Math.random() < 0.8 ? 1 : -1));
+      scheduleAutoAdvance();
+    }, delay);
+  }
+
+  function toggleAuto() {
+    autoMode = !autoMode;
+    autoBtn.textContent = autoMode ? 'AUTO ●' : 'AUTO';
+    autoBtn.classList.toggle('active', autoMode);
+    autoControlsEl.style.display = autoMode ? '' : 'none';
+    if (autoMode) {
+      scheduleAutoAdvance();
+    } else {
+      clearTimeout(autoTimer);
+    }
+  }
+
+  autoBtn.addEventListener('click', toggleAuto);
+  autoIntervalSlider.addEventListener('input', () => {
+    autoIntervalVal.textContent = autoIntervalSlider.value + 's';
+    if (autoMode) { clearTimeout(autoTimer); scheduleAutoAdvance(); }
+  });
+  autoVarianceSlider.addEventListener('input', () => {
+    autoVarianceVal.textContent = parseFloat(autoVarianceSlider.value).toFixed(2);
+  });
 
   eventsToggle.addEventListener('click', () => {
     state.eventsEnabled = !state.eventsEnabled;
@@ -708,6 +753,10 @@ export function setupUI(canvas: HTMLCanvasElement): void {
       case 'R':
         randomizeParams();
         break;
+      case 'a':
+      case 'A':
+        toggleAuto();
+        break;
     }
   });
 
@@ -750,6 +799,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   regenerate();
   applyGenText();
   updateTextOverlay();
+  if (autoMode) scheduleAutoAdvance();
 
   // Intro sequence
   const introHint = document.getElementById('intro-hint')!;

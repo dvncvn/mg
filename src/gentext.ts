@@ -7,7 +7,7 @@ const NOUNS = [
   'bloom', 'trace', 'fog', 'frame', 'flux', 'edge',
   'depth', 'layer', 'zone', 'wave', 'break', 'scan',
   'form', 'space', 'lapse', 'tone', 'shift', 'blur',
-  'sync', 'ghost', 'cell', 'arc', 'veil', 'root',
+  'sync', 'ghost', 'cell', 'arc', 'veil',
   'slab', 'ring', 'node', 'seam', 'span', 'axis',
   'core', 'dome', 'rift', 'dust', 'echo', 'wake',
 ];
