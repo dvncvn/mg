@@ -7,7 +7,7 @@ import type { FillParams } from './types';
 /**
  * Angled streak/scan-line fill: dense banding at a per-rect angle with
  * noise-modulated frequency and thickness. Creates the scan-line
- * aesthetic seen in Monogrid-style work.
+ * horizontal scan-line banding aesthetic.
  */
 export function fillStreak(
   bitmap: Uint8Array,

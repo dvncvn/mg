@@ -222,17 +222,12 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   let textMode = true;
   let genTextMode = true;
   const frameTitleEl = document.getElementById('frame-title')!;
-  const frameSubEl = document.getElementById('frame-sub')!;
-  const frameDetailEl = document.getElementById('frame-detail')!;
 
   function updateTextOverlay() {
     const textVisible = textMode;
     frameTextEl.style.display = textVisible ? 'flex' : 'none';
     textControlsEl.style.display = textVisible ? '' : 'none';
 
-    // Fullscreen: title only. Frame mode: all three.
-    frameSubEl.style.display = (!frameMode && textVisible) ? 'none' : '';
-    frameDetailEl.style.display = (!frameMode && textVisible) ? 'none' : '';
 
     // Reset positioning
     frameTextEl.style.left = '';
@@ -253,8 +248,6 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     frameTextEl.style.color = textColorInput.value;
     const scale = parseFloat(textSizeSlider.value);
     frameTextEl.style.setProperty('--frame-title-size', (22 * scale) + 'px');
-    frameTextEl.style.setProperty('--frame-sub-size', (11 * scale) + 'px');
-    frameTextEl.style.setProperty('--frame-detail-size', (9 * scale) + 'px');
 
     const pos = textPositionSelect.value;
     const pad = 24;

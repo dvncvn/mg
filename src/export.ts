@@ -3,7 +3,7 @@
  */
 export function savePNG(canvas: HTMLCanvasElement, seed: number): void {
   const link = document.createElement('a');
-  link.download = `monogrid-${String(seed).padStart(3, '0')}.png`;
+  link.download = `mg-${String(seed).padStart(3, '0')}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
@@ -35,7 +35,7 @@ export function recordWebM(
       const blob = new Blob(chunks, { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `monogrid-${String(seed).padStart(3, '0')}.webm`;
+      link.download = `mg-${String(seed).padStart(3, '0')}.webm`;
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);
