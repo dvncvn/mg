@@ -15,6 +15,8 @@ const NOUNS = [
   'spectre', 'ether', 'mist',
   'shapes', 'color', 'dawn', 'dusk',
   'feel', 'touch', 'skin',
+  'rise', 'seed', 'hallow', 'beam',
+  'filter', 'chorus', 'delay', 'async', 'feedback', 'hall', 'lair', 'cave',
 ];
 
 const MODIFIERS = [
