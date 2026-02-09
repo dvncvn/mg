@@ -31,6 +31,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   const textSizeSlider = document.getElementById('textSize') as HTMLInputElement;
   const textSizeVal = document.getElementById('textSizeVal')!;
   const textPositionSelect = document.getElementById('textPosition') as HTMLSelectElement;
+  const textCaseSelect = document.getElementById('textCase') as HTMLSelectElement;
   const lensToggle = document.getElementById('lensToggle')!;
   const lensSizeSlider = document.getElementById('lensSize') as HTMLInputElement;
   const lensForceSlider = document.getElementById('lensForce') as HTMLInputElement;
@@ -610,11 +611,21 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   let genTextBase = '';
   let glitchInterval = 0;
 
+  function applyCaseOverride(text: string): string {
+    const mode = textCaseSelect.value;
+    switch (mode) {
+      case 'lower': return text.toLowerCase();
+      case 'upper': return text.toUpperCase();
+      case 'sentence': return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+      default: return text; // 'auto' — use whatever generateText returned
+    }
+  }
+
   function startGlitchLoop() {
     stopGlitchLoop();
     glitchInterval = window.setInterval(() => {
       if (genTextMode && textMode) {
-        frameTitleEl.textContent = glitchText(genTextBase, 0.12 + Math.random() * 0.1);
+        frameTitleEl.textContent = glitchText(applyCaseOverride(genTextBase), 0.12 + Math.random() * 0.1);
       }
     }, 120);
   }
@@ -626,7 +637,7 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   function applyGenText() {
     if (genTextMode) {
       genTextBase = generateText(seed);
-      frameTitleEl.textContent = genTextBase;
+      frameTitleEl.textContent = applyCaseOverride(genTextBase);
       frameTitleEl.contentEditable = 'false';
       if (textMode) startGlitchLoop();
     } else {
@@ -664,6 +675,11 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   });
   textPositionSelect.addEventListener('change', () => {
     if (frameMode) updateFrameLayout(); else updateTextOverlay();
+  });
+  textCaseSelect.addEventListener('change', () => {
+    if (genTextMode) {
+      frameTitleEl.textContent = applyCaseOverride(genTextBase);
+    }
   });
 
   // === BPM sync ===
@@ -934,15 +950,24 @@ export function setupUI(canvas: HTMLCanvasElement): void {
   frameTextEl.style.display = 'none';
   if (autoMode) scheduleAutoAdvance();
 
+  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  let bootBase = 'bitfield';
+  const hintText = isMobile
+    ? 'tap + for controls  ·  ? for shortcuts'
+    : 'cmd + .  for controls  ·  ? for shortcuts';
+
   const bootGlitch = window.setInterval(() => {
-    bootTextEl.textContent = glitchText('bitfield', 0.15 + Math.random() * 0.15);
+    bootTextEl.textContent = glitchText(bootBase, 0.12 + Math.random() * 0.12);
   }, 100);
 
-  // Intro sequence
-  const introHint = document.getElementById('intro-hint')!;
-  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  introHint.textContent = isMobile ? 'tap + to open controls' : 'cmd + . to open controls';
-  introHint.style.display = 'block';
+  // Phase 1 (0-2s): "bitfield" glitching
+  // Phase 2 (2-4.5s): hint text, still glitching
+  // Phase 3 (4.5s+): art reveals, gen text takes over
+
+  setTimeout(() => {
+    bootBase = hintText;
+  }, 2000);
 
   setTimeout(() => {
     clearInterval(bootGlitch);
@@ -950,14 +975,5 @@ export function setupUI(canvas: HTMLCanvasElement): void {
     state.revealStart = performance.now();
     applyGenText();
     updateTextOverlay();
-  }, 2000);
-  setTimeout(() => {
-    introHint.classList.add('show');
   }, 4500);
-  setTimeout(() => {
-    introHint.classList.remove('show');
-  }, 8500);
-  setTimeout(() => {
-    introHint.style.display = 'none';
-  }, 9500);
 }

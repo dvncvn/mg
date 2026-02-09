@@ -112,18 +112,6 @@
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
-    #intro-hint {
-      display: none;
-      position: fixed;
-      bottom: 24px; right: 24px;
-      z-index: 20;
-      font-family: 'Geist Pixel', monospace;
-      font-size: 10px;
-      color: #444;
-      opacity: 0;
-      transition: opacity 0.8s ease;
-    }
-    #intro-hint.show { opacity: 1; }
     #help-overlay {
       display: none;
       position: fixed; inset: 0; z-index: 100;
@@ -170,11 +158,11 @@
       display: flex; align-items: center; justify-content: center;
       font-family: 'Geist Pixel', monospace;
       color: #38ff7e;
-      font-size: 12vw;
+      font-size: 7vw;
       letter-spacing: 0.02em;
-      text-transform: lowercase;
       pointer-events: none;
       user-select: none; -webkit-user-select: none;
+      transition: font-size 0.5s ease, color 0.5s ease;
     }
     #boot-text.hidden { display: none; }
     body.framed { background: #e8ddd3; }
@@ -312,6 +300,12 @@
         <option value="br">Bottom Right</option>
         <option value="tr">Top Right</option>
       </select></div>
+      <div class="row"><label>Case</label><select id="textCase">
+        <option value="auto">Auto</option>
+        <option value="lower">lowercase</option>
+        <option value="upper">UPPERCASE</option>
+        <option value="sentence">Sentence</option>
+      </select></div>
     </div>
 
     <div class="divider"></div>
@@ -322,7 +316,6 @@
     </div>
     <div class="hint">Space · ←→ seed · ↑↓ res · [] subdiv · +− zoom · 0 reset · A auto · R rand · C colors · T text · F frame</div>
   </div>
-  <div id="intro-hint"></div>
   <div id="help-overlay">
     <div id="help-inner">
       <div class="help-grid">

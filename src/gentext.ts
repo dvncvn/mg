@@ -123,6 +123,19 @@ const SYMBOL_FRAGMENTS = [
   '__ zone __', '.. trace ..', '// break //', ':: node ::',
 ];
 
+/** Apply varied casing based on a hash value */
+function applyCase(text: string, h: number): string {
+  const mode = h % 3; // 0 = lowercase, 1 = uppercase, 2 = sentence case
+  switch (mode) {
+    case 1:
+      return text.toUpperCase();
+    case 2:
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    default:
+      return text;
+  }
+}
+
 export function generateText(seed: number): string {
   // Extra mixing to ensure adjacent seeds diverge
   let h = next(seed + 1);
@@ -133,25 +146,41 @@ export function generateText(seed: number): string {
   h = next(h);
   const h2 = next(h);
   const h3 = next(h2);
+  const h4 = next(h3);
+
+  let text: string;
+  let canCase = true;
 
   switch (roll) {
     case 0:
-      return pick(NOUNS, h);
+      text = pick(NOUNS, h);
+      break;
     case 1:
-      return pick(MODIFIERS, h) + ' ' + pick(NOUNS, h2);
+      text = pick(MODIFIERS, h) + ' ' + pick(NOUNS, h2);
+      break;
     case 2:
-      return pick(FRAGMENTS, h);
+      text = pick(FRAGMENTS, h);
+      break;
     case 3:
-      return pick(NOUNS, h) + ' / ' + pick(NOUNS, h2);
+      text = pick(NOUNS, h) + ' / ' + pick(NOUNS, h2);
+      break;
     case 4:
-      return pick(MODIFIERS, h) + ' ' + pick(NOUNS, h2) + ' ' + String((h3 % 99) + 1).padStart(2, '0');
+      text = pick(MODIFIERS, h) + ' ' + pick(NOUNS, h2) + ' ' + String((h3 % 99) + 1).padStart(2, '0');
+      break;
     case 5:
-      return pick(GLYPHS, h);
+      text = pick(GLYPHS, h);
+      canCase = false; // glyphs — leave as-is
+      break;
     case 6:
-      return pick(SYMBOL_FRAGMENTS, h);
+      text = pick(SYMBOL_FRAGMENTS, h);
+      canCase = false;
+      break;
     case 7:
     default:
-      // glyph + word combo
-      return pick(GLYPHS, h) + ' ' + pick(NOUNS, h2);
+      text = pick(GLYPHS, h) + ' ' + pick(NOUNS, h2);
+      canCase = false;
+      break;
   }
+
+  return canCase ? applyCase(text, h4) : text;
 }
